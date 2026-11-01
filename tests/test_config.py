@@ -1,4 +1,14 @@
-"""Tests for loading credentials from outside the repository."""
+"""Tests for loading credentials from outside the repository.
+
+WHAT TO TEST FIRST (importance ranking)
+---------------------------------------
+1. [CORE] Values are found: from the file, from the environment, and the
+   environment winning over the file.
+2. [ERRORS] Missing or broken input gives a clear `ConfigError` that names
+   what is missing (and only that).
+3. [SAFETY] The password is never in an error message, a log file or a
+   traceback, and it is registered so the logger hides it.
+"""
 
 import pytest
 
@@ -7,9 +17,12 @@ import my_app.logger as log_module
 from my_app.config import ConfigError, load_credentials
 from my_app.logger import logger, redact, setup_logging
 
+# A realistic credentials file. The values are fake.
 FILE_TEXT = "[api]\nemail = alice@example.org\npassword = hunter2-file\n"
 
 
+# A helper, not a test: its name does not start with `test_`, so pytest
+# does not run it. Tests call it to build files for different situations.
 def write_file(tmp_path, text):
     """Write `text` to a credentials file and return its path."""
     path = tmp_path / "credentials.ini"
@@ -17,6 +30,9 @@ def write_file(tmp_path, text):
     return path
 
 
+# Runs before every test. Real environment variables on your own computer
+# could otherwise change the results. `raising=False` means "do not complain
+# if the variable was not set".
 @pytest.fixture(autouse=True)
 def clean_state(monkeypatch):
     """Clear credential variables and registered secrets."""
@@ -25,12 +41,15 @@ def clean_state(monkeypatch):
     monkeypatch.setattr(log_module, "_secrets", set())
 
 
+# A second fixture that builds on `tmp_path`: pytest passes fixtures into
+# fixtures by name.
 @pytest.fixture
 def credentials_file(tmp_path):
     """Write a valid credentials file and return its path."""
     return write_file(tmp_path, FILE_TEXT)
 
 
+# [CORE] Level 1.
 # Where the values come from
 def test_credentials_are_read_from_the_file(credentials_file):
     """Return the email and password written in the file."""
@@ -61,6 +80,7 @@ def test_default_file_location_is_used(credentials_file, monkeypatch):
     assert load_credentials()[0] == "alice@example.org"
 
 
+# [ERRORS] Level 2.
 # Missing or broken input
 def test_missing_credentials_name_both_variables(tmp_path):
     """Say which settings are missing when there is no file or variable."""
@@ -70,6 +90,8 @@ def test_missing_credentials_name_both_variables(tmp_path):
     assert config.PASSWORD_VAR in str(error.value)
 
 
+# `match` is a regular expression, so the "." is escaped (`\.`) to mean a
+# literal full stop. The test proves the email is NOT reported missing.
 def test_only_the_missing_value_is_named(tmp_path):
     """Name just the setting that is missing."""
     path = write_file(tmp_path, "[api]\nemail = alice@example.org\n")
@@ -97,9 +119,12 @@ def test_unparsable_file_does_not_quote_its_lines(tmp_path):
     with pytest.raises(ConfigError) as error:
         load_credentials(path)
     assert "hunter2" not in str(error.value)
+    # `from None` in config.py sets this flag, which hides the parser's
+    # original error (and the line it quoted) from tracebacks.
     assert error.value.__suppress_context__ is True
 
 
+# [SAFETY] Level 3.
 # Keeping the password out of the logs
 def test_loaded_password_is_registered_as_a_secret(credentials_file):
     """Hide the loaded password anywhere it appears in a log."""

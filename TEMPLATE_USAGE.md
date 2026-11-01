@@ -60,6 +60,11 @@ All tests should pass with the new names.
 
 ## 6. Replace the example code
 
+Start with the tags. Each file's opening comment ranks its parts, and
+`[EXAMPLE]` marks what to replace. `[CORE]` is where to begin if you are
+building a simpler version, and the other tags say what to add and when.
+See "Reading the code" in `docs/technical.md`.
+
 `my_app/modules/example.py`, `my_app/client.py` (the API example, with
 its address, endpoint and ID rule), their tests, and the text in `docs/`
 and `README.md` are placeholders. Replace them with the real project.

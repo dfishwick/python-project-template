@@ -37,6 +37,20 @@ docs/                these pages, built with MkDocs
 - **Versions are pinned.** `pyproject.toml` fixes the exact version of each
   package so the app builds the same way everywhere.
 
+## Reading the code: importance tags
+
+Every code and configuration file begins with a "what to build first"
+ranking, and each element carries a tag in a comment. Search for a tag to
+find all the elements of that level.
+
+| Tag | Meaning |
+|---|---|
+| `[CORE]` | The smallest working version. Build and test this first. |
+| `[ERRORS]` | Turns failures into clear messages. Build second. |
+| `[SAFETY]` | Protects input, secrets and credentials. Add before real data or users. |
+| `[SECONDARY]` | Useful, but the app works without it. Add as needed. |
+| `[EXAMPLE]` | Pretend content. Replace it with the real project. |
+
 ## Calling a web API
 
 All network calls live in `my_app/client.py`.

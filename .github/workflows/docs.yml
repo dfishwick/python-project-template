@@ -1,5 +1,21 @@
+# Docs: builds the MkDocs site and publishes it to GitHub Pages.
+#
+# WHAT TO BUILD FIRST (importance ranking)
+# 1. [CORE] Install MkDocs and run `mkdocs build --strict`. Strict mode
+#    fails on a broken link, so the check is useful on its own.
+# 2. [SECONDARY] Publish to GitHub Pages, only from main.
+# 3. [SECONDARY] Path filters, so the workflow runs only when docs change.
+#
+# One-off set-up: in the repository, Settings, Pages, set Source to
+# "GitHub Actions". Without it the first run fails at "Configure GitHub
+# Pages".
+#
+# [CORE] The name shown in the Actions tab.
 name: Docs
 
+# [SECONDARY] Run when docs files change, on main and on pull requests.
+# `paths` limits it, so a code-only change does not rebuild the docs.
+# `workflow_dispatch` adds a manual "Run workflow" button.
 on:
   push:
     branches:
@@ -15,11 +31,15 @@ on:
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
+# [SAFETY] Only what publishing to Pages needs: `pages: write` to deploy and
+# `id-token: write` to prove to Pages that this workflow is the author.
 permissions:
   contents: read
   pages: write
   id-token: write
 
+# Only one deployment at a time. `cancel-in-progress: false` lets a running
+# deployment finish instead of being cut off half way.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -36,11 +56,15 @@ jobs:
         with:
           python-version: "3.12"
 
+      # [CORE] Versions are pinned in docs/requirements.txt, so the site builds
+      # the same way every time.
       - name: Install documentation dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r docs/requirements.txt
 
+      # [CORE] `--strict` turns warnings (broken links, missing pages) into
+      # failures.
       - name: Build documentation
         run: mkdocs build --strict
 
@@ -52,6 +76,9 @@ jobs:
         with:
           path: site
 
+  # [SECONDARY] Publishing is a separate job that runs only on main, after
+  # the build succeeds (`needs: build`). Pull requests build the site to
+  # check it, but never publish it.
   deploy:
     if: github.ref == 'refs/heads/main'
     needs: build

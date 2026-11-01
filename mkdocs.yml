@@ -1,10 +1,21 @@
+# mkdocs.yml: settings for the documentation website.
+#
+# [CORE] MkDocs reads ONLY the folder named in `docs_dir`. Pages elsewhere
+# (such as README.md) are not part of the site, so docs pages are separate
+# copies of README sections. When one changes, update the other.
+#
+# [CORE] Title and description.
 site_name: My App
 site_description: Template for a Flask web app with logging, tests, Docker, CI and docs
+# [SECONDARY] Replace YOUR_USERNAME and YOUR_REPO after copying the template.
 site_url: https://YOUR_USERNAME.github.io/YOUR_REPO/
 repo_name: YOUR_USERNAME/YOUR_REPO
 repo_url: https://github.com/YOUR_USERNAME/YOUR_REPO
+# [CORE] The folder of Markdown pages.
 docs_dir: docs
 
+# [CORE] The menu, in order. A page missing from here still builds but is
+# not linked, and `--strict` warns about it.
 nav:
   - Home: index.md
   - Installation: installation.md

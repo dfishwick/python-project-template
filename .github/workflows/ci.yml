@@ -1,5 +1,18 @@
+# CI (continuous integration): GitHub runs these steps on a fresh machine
+# every time code is proposed, so a broken change is found before it is
+# merged.
+#
+# WHAT TO BUILD FIRST (importance ranking)
+# 1. [CORE] Check out the code and run the tests.
+# 2. [CORE] Fail the run if the tests fail (the default: any step that
+#    exits with an error stops the job and shows a red cross).
+# 3. [SECONDARY] Coverage report and Codecov upload.
+# 4. [SECONDARY] A check that the built app really starts and responds.
+#
+# [CORE] The name shown in the Actions tab and in the badge.
 name: CI
 
+# [CORE] "on" says when the workflow runs.
 # Run on every pull request, and on pushes to main.
 # Not on every push to every branch, so a pull request is not tested twice.
 on:
@@ -8,22 +21,36 @@ on:
       - main
   pull_request:
 
+# [SAFETY] Give the job only the access it needs. Read-only means a
+# compromised step cannot change the repository.
 permissions:
   contents: read
 
+# [CORE] A job is a list of steps that run on one machine. Steps run in
+# order and the job stops at the first one that fails.
 jobs:
   test:
+    # A fresh Linux machine, thrown away afterwards, so nothing is left over
+    # from an earlier run.
     runs-on: ubuntu-latest
     steps:
+      # [CORE] Download the repository onto the machine. `uses:` runs a ready-made
+      # action; `@v4` pins its version.
       - name: Checkout
         uses: actions/checkout@v4
 
+      # [SECONDARY] Build the same image as for users, so the tests run in the
+      # real environment, not a lookalike. `-t my-app` names the image.
       - name: Build Docker image
         run: docker build -t my-app .
 
+      # `-d` runs it in the background. `-p 8000:8000` connects port 8000 on the
+      # machine to port 8000 in the container.
       - name: Start container
         run: docker run -d --name my-app -p 8000:8000 my-app
 
+      # [SECONDARY] Poll until the app answers. The container needs a few
+      # seconds to start, so a single check straight away would fail.
       - name: Check the app responds
         run: |
           # Wait up to 30 seconds for the app to start
@@ -36,12 +63,19 @@ jobs:
           docker logs my-app
           exit 1
 
+      # [CORE] Run the tests inside the container. `--cov=my_app` measures how
+      # much of the code the tests ran. The rubric asks for over 80 percent on
+      # the source code only. The XML report is for Codecov.
       - name: Run tests with coverage
         run: docker exec my-app python -m pytest --cov=my_app --cov-report=term --cov-report=xml
 
+      # The report was written inside the container; copy it out to the machine.
       - name: Copy coverage report out of the container
         run: docker cp my-app:/app/coverage.xml coverage.xml
 
+      # [SECONDARY] Send the report to Codecov, which draws the coverage badge.
+      # The token is a repository SECRET (Settings, Secrets): GitHub hides it in
+      # logs. Never type the token into this file.
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
