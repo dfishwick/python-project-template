@@ -7,6 +7,7 @@ my_app/
     main.py          the Flask app factory and routes
     logger.py        logging set-up and hiding of secrets
     config.py        loads credentials from outside the repository
+    client.py        the only file that makes web (API) requests
     modules/         plain Python logic, with no dependence on Flask
     templates/       HTML pages
     static/          style sheet
@@ -35,6 +36,23 @@ docs/                these pages, built with MkDocs
   [Credentials](credentials.md).
 - **Versions are pinned.** `pyproject.toml` fixes the exact version of each
   package so the app builds the same way everywhere.
+
+## Calling a web API
+
+All network calls live in `my_app/client.py`.
+
+- `ApiClient.get_json(path, params)` sends a GET request and returns the
+  JSON reply. It always sets a timeout, checks the HTTP status, and turns
+  every failure into a single `ApiError`.
+- `validate_item_id` checks an ID before any request is made, so bad input
+  costs no network traffic and cannot change the web address.
+- Credentials come from `my_app.config.load_credentials()` and are passed
+  as `ApiClient(auth=...)`. They are never written in code or logged.
+- Tests replace `requests.get` with a fake, so they need no network. See
+  `tests/test_client.py` for the pattern.
+
+To use a real API, change `EXAMPLE_BASE_URL`, the endpoint in `lookup`, and
+the ID rule in `ITEM_ID_PATTERN`.
 
 ## Adding a feature
 
