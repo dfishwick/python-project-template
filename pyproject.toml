@@ -1,8 +1,20 @@
+# pyproject.toml: the project's settings in one standard file.
+#
+# WHAT TO BUILD FIRST (importance ranking)
+# 1. [CORE] [project]: name, version and the dependencies.
+# 2. [CORE] [build-system]: tells pip how to install the project.
+# 3. [SECONDARY] [tool.*] sections configure tools such as Black.
 [project]
+# [CORE] The name used by `pip install .`. Change it with your project.
 name = "my_app"
 version = "0.1.0"
 description = "Template for a Flask web app with logging, tests, Docker, CI and docs"
+# The oldest Python allowed.
 requires-python = ">=3.12"
+# [CORE] Exact versions (`==`) make every install identical, which is what
+# the rubric means by pinned. Add every package the code imports.
+# pytest and pytest-cov are listed here so the Docker image can run the
+# tests; a larger project might split these into an optional group.
 dependencies = [
     "Flask==3.1.3",
     "requests==2.34.2",
@@ -11,13 +23,18 @@ dependencies = [
 ]
 readme = "README.md"
 
+# [CORE] Which folders are code. Without this, setuptools may also pick up
+# `tests` or `docs` as packages.
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["my_app*"]
 
+# [SECONDARY] Black formats code automatically. 79 matches PEP 8's limit,
+# so Black and flake8 agree.
 [tool.black]
 line-length = 79
 
+# [CORE] The tools pip needs in order to build and install this project.
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"

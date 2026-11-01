@@ -1,7 +1,17 @@
+# environment.yml: a minimal conda environment. Conda provides Python; pip
+# then installs the project's own pinned packages from pyproject.toml.
+# Keeping this file small avoids two lists of packages that can disagree.
+#
+# [CORE] Create it with: conda env create -f environment.yml
+# [CORE] The environment's name, used by `conda activate my-app`.
 name: my-app
+# [SECONDARY] Where conda looks for packages. `nodefaults` stops it using
+# the Anaconda default channel, whose terms of use can restrict some users.
 channels:
   - conda-forge
   - nodefaults
+# [CORE] Python is pinned exactly, to match the Dockerfile. `pip` is listed
+# so the environment has its own pip.
 dependencies:
   - python=3.12.14
   - pip

@@ -1,4 +1,19 @@
-"""Tests for the logging setup."""
+"""Tests for the logging setup.
+
+Logging is hard to test by eye, because a wrong level or a duplicated
+handler looks fine on screen. These tests check each setting directly.
+
+WHAT TO TEST FIRST (importance ranking)
+---------------------------------------
+1. [CORE] The right handlers exist, and calling setup twice does not
+   duplicate them (duplicates print every message twice).
+2. [SECONDARY] Levels: defaults, arguments, environment variables, which
+   wins, and that an invalid name is rejected.
+3. [CORE] Messages really reach the file and the terminal, and respect
+   each level.
+4. [SECONDARY] The dated file name and rotation.
+5. [ERRORS] A log file that cannot be opened does not stop the app.
+"""
 
 import logging
 from datetime import datetime
@@ -15,6 +30,8 @@ from my_app.logger import (
 )
 
 
+# Runs before every test: removes any level variables set on your own
+# computer, so a test only sees what it sets itself.
 @pytest.fixture(autouse=True)
 def clear_log_settings(monkeypatch):
     """Remove the level variables so only each test's own settings count."""
@@ -22,6 +39,7 @@ def clear_log_settings(monkeypatch):
         monkeypatch.delenv(name, raising=False)
 
 
+# Two small helper functions, not tests. They keep the tests below short.
 def stream_handlers():
     """Return the logger's stream handlers, not including the file handler."""
     # RotatingFileHandler is a kind of StreamHandler, so check the exact type.
@@ -33,6 +51,7 @@ def file_handlers():
     return [h for h in logger.handlers if isinstance(h, RotatingFileHandler)]
 
 
+# [CORE] Level 1.
 # Handlers
 def test_setup_adds_one_stream_and_one_rotating_file_handler():
     """Log to the stream and to a rotating file."""
@@ -49,6 +68,8 @@ def test_calling_setup_twice_does_not_duplicate_handlers():
     assert len(file_handlers()) == 1
 
 
+# [SECONDARY] Level 2. The order of priority is: argument, then environment
+# variable, then default.
 # Levels
 def test_default_levels():
     """Use INFO for the stream and DEBUG for the file."""
@@ -93,6 +114,8 @@ def test_invalid_level_raises_value_error():
         setup_logging(stream_level="LOUD")
 
 
+# [CORE] Level 3: write a message and read it back, which proves the whole
+# chain of logger, handler, level and file is connected.
 # Messages go where they should
 def test_file_only_receives_messages_at_or_above_its_level(tmp_path):
     """Leave messages below the file level out of the file."""
@@ -105,6 +128,7 @@ def test_file_only_receives_messages_at_or_above_its_level(tmp_path):
     assert "info text" not in text
 
 
+# `capsys` captures terminal output. Logging goes to stderr, hence `.err`.
 def test_stream_only_shows_messages_at_or_above_its_level(tmp_path, capsys):
     """Leave messages below the stream level off the terminal."""
     setup_logging(stream_level="WARNING", log_file=tmp_path / "s.log")
@@ -123,6 +147,8 @@ def test_missing_log_folder_is_created(tmp_path):
     assert log_file.exists()
 
 
+# [SECONDARY] Level 4. The tests point `DEFAULT_LOG_DIR` at a temporary
+# folder so they never touch your real log folder.
 # Default log file name
 def test_default_log_file_name_has_date_and_time(tmp_path, monkeypatch):
     """Name a new log file with the date and time it is made."""
@@ -158,6 +184,8 @@ def test_default_log_file_is_one_file_across_start_ups(tmp_path, monkeypatch):
     assert "second start" in text
 
 
+# [SECONDARY] Level 4. The limits are made tiny (200 bytes) so that 50
+# short messages are enough to trigger rotation.
 # Rotation
 def test_log_file_rotates_and_keeps_limited_backups(tmp_path, monkeypatch):
     """Start a new file when the limit is reached and keep few old files."""
@@ -177,6 +205,8 @@ def test_log_file_rotates_and_keeps_limited_backups(tmp_path, monkeypatch):
     )
 
 
+# [ERRORS] Level 5. A file cannot be created inside another FILE, so using
+# an ordinary file as the "folder" is a simple way to force an OSError.
 # Problems with the log file
 def test_unusable_log_path_falls_back_to_stream_only(tmp_path, caplog):
     """Keep running with the stream only when the file cannot be opened."""

@@ -1,3 +1,9 @@
+# .dockerignore: files that COPY leaves out of the Docker image. It works
+# like .gitignore but is a separate file with a different job: .gitignore
+# keeps files out of Git, .dockerignore keeps them out of the image. A file
+# in only one of them can still leak through the other.
+#
+# [SAFETY] Credentials must be listed here (see the end of the file).
 # Version Control and editor files
 .git
 .vscode
