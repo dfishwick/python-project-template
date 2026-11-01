@@ -1,0 +1,48 @@
+name: CI
+
+# Run on every pull request, and on pushes to main.
+# Not on every push to every branch, so a pull request is not tested twice.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t my-app .
+
+      - name: Start container
+        run: docker run -d --name my-app -p 8000:8000 my-app
+
+      - name: Check the app responds
+        run: |
+          # Wait up to 30 seconds for the app to start
+          for attempt in $(seq 1 15); do
+            if curl -fs http://localhost:8000/ > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs my-app
+          exit 1
+
+      - name: Run tests with coverage
+        run: docker exec my-app python -m pytest --cov=my_app --cov-report=term --cov-report=xml
+
+      - name: Copy coverage report out of the container
+        run: docker cp my-app:/app/coverage.xml coverage.xml
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

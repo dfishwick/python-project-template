@@ -1,0 +1,52 @@
+# Technical guide
+
+## Layout
+
+```
+my_app/
+    main.py          the Flask app factory and routes
+    logger.py        logging set-up and hiding of secrets
+    config.py        loads credentials from outside the repository
+    modules/         plain Python logic, with no dependence on Flask
+    templates/       HTML pages
+    static/          style sheet
+tests/               pytest tests, at the project root
+docs/                these pages, built with MkDocs
+```
+
+## How a request is handled
+
+1. `create_app` in `main.py` sets up logging and registers the routes.
+2. A route reads the request and calls a function in `modules/`.
+3. The function returns a result or raises an error.
+4. The route renders `index.html`, or logs the problem and shows an error.
+5. Any error nobody expected goes to `handle_unexpected_error`, which logs
+   the traceback and shows a plain error page.
+
+## Design decisions
+
+- **The app is built inside `create_app`.** Tests can then make their own
+  copy instead of sharing one created at import time.
+- **Logic lives in `modules/`, not in the routes.** A plain function can be
+  tested without a web server.
+- **Logging is set up once, in `create_app`.** Every other file imports the
+  shared `logger`.
+- **Credentials stay outside the repository.** See
+  [Credentials](credentials.md).
+- **Versions are pinned.** `pyproject.toml` fixes the exact version of each
+  package so the app builds the same way everywhere.
+
+## Adding a feature
+
+1. Write the logic as a function in a new file in `modules/`, with a
+   docstring in the NumPy style.
+2. Add tests for it in `tests/`, including the error cases.
+3. Call it from a route in `main.py`.
+4. Add a route test in `tests/test_routes.py`.
+5. Update the [user guide](user-guide.md) if the behaviour changes.
+
+## Style
+
+- PEP 8, with lines of at most 79 characters.
+- NumPy-style docstrings on every module, function and class.
+- Comments explain why, not what.

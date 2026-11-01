@@ -1,0 +1,17 @@
+# Version Control and editor files
+.git
+.vscode
+ 
+# Test and coverage output
+.pytest_cache
+.coverage
+htmlcov
+
+# Generated Python files
+*.egg-info
+**/__pycache__
+
+# Credentials are supplied at run time, never baked into the image
+.env
+credentials.ini
+.my_app_access
