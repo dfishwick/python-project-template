@@ -8,6 +8,17 @@ fake (a "stub") using pytest's `monkeypatch`, so the tests are:
 * able to test failures (timeouts, 500 errors, bad JSON) that a real
   server will not produce on demand.
 
+WHAT TO TEST FIRST (same ranking as the tags in client.py)
+-----------------------------------------------------------
+1. [CORE] `test_get_json_returns_data_and_sends_the_right_arguments` and
+   `test_build_url_joins_with_exactly_one_slash`. Write these first.
+2. [ERRORS] The timeout, connection, HTTP status and invalid JSON tests.
+   Every `except` in the client needs a test that reaches it.
+3. [SAFETY] The ID tests and
+   `test_lookup_rejects_a_bad_id_without_calling_the_api`. Include awkward
+   inputs: empty, too long, None, a newline.
+4. [SECONDARY] `test_query_string_is_not_written_to_the_log`.
+
 How a fake works, in three steps:
 1. Write a small class or function that looks like the real thing.
 2. Use `monkeypatch.setattr("my_app.client.requests.get", fake)` so the

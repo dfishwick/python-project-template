@@ -11,6 +11,28 @@ Keeping every network call in this one file has three benefits:
   being up. This matters for continuous integration, which has none of
   those things.
 
+WHAT TO BUILD FIRST (importance ranking)
+----------------------------------------
+Starting from scratch, or building a simple version? Build in this order.
+Each level works on its own, and the next level makes it safer or nicer.
+Every element in this file carries a matching tag in a comment, so you can
+search for the tag (for example "[CORE]") to find it.
+
+1. [CORE] The smallest working client: `requests.get(url, timeout=...)`,
+   then `response.raise_for_status()`, then `response.json()`. These three
+   calls inside `ApiClient.get_json`, plus `DEFAULT_TIMEOUT`, `__init__`
+   and `build_url`, are a working client. Build and test this first.
+2. [ERRORS] One `ApiError` and the `try`/`except` blocks that turn every
+   failure (timeout, no connection, bad status, bad JSON) into it. Add this
+   second, so the rest of the app has one thing to catch.
+3. [SAFETY] Check input before it reaches the network: `ITEM_ID_PATTERN`,
+   `InvalidItemIdError`, `validate_item_id` and `quote`. Add this third,
+   whenever any part of the address comes from a user.
+4. [SECONDARY] Nice to have, added when the real API needs them: the
+   `logger` calls, the `auth` argument and the `params` argument.
+5. [EXAMPLE] `EXAMPLE_BASE_URL` and `ApiClient.lookup` are the pretend API.
+   Replace them with your real address and endpoints; keep everything above.
+
 The example in `ApiClient.lookup` talks to a pretend API at
 https://api.example.org/. To use a real API, change the base URL, the
 endpoint path and the ID rule, and keep the structure.
@@ -31,15 +53,18 @@ import requests
 # the same format and with secrets hidden.
 from my_app.logger import logger
 
+# [CORE] Without a timeout the app can freeze forever, so this is level 1.
 # How many seconds to wait for the server before giving up.
 # Without a timeout, `requests` waits forever, so one stuck server would
 # freeze the whole app. Raise this number if the real API is slow.
 DEFAULT_TIMEOUT = 30
 
+# [EXAMPLE] Replace with the real API address.
 # A placeholder address. `example.org` is reserved for examples, so this can
 # never reach a real service by accident.
 EXAMPLE_BASE_URL = "https://api.example.org/"
 
+# [SAFETY] Level 3: input checking, before anything is sent.
 # What an item ID may look like: 1 to 50 letters, digits, dots, colons,
 # underscores or hyphens. For example "ABC123", "NM_000088.3" or "HGNC:5".
 # Checking the shape before sending anything means a typo costs no network
@@ -48,6 +73,7 @@ EXAMPLE_BASE_URL = "https://api.example.org/"
 ITEM_ID_PATTERN = re.compile(r"[A-Za-z0-9_.:-]{1,50}")
 
 
+# [ERRORS] Level 2: one error type for every kind of failure.
 class ApiError(Exception):
     """Raise when a request to the API fails, whatever the reason.
 
@@ -56,6 +82,7 @@ class ApiError(Exception):
     """
 
 
+# [SAFETY] Level 3: the error for input that fails the check.
 class InvalidItemIdError(ValueError):
     """Raise when an item ID is not in the expected format.
 
@@ -65,6 +92,7 @@ class InvalidItemIdError(ValueError):
     """
 
 
+# [SAFETY] Level 3: the check itself. Rename and change the rule for your IDs.
 def validate_item_id(item_id):
     """Check that an item ID has the expected format.
 
@@ -102,6 +130,8 @@ def validate_item_id(item_id):
     return item_id
 
 
+# [CORE] Level 1: the class holds the settings (address, timeout, login) that
+# every request shares.
 class ApiClient:
     """Make requests to one web API and return the data as Python objects.
 
@@ -122,6 +152,7 @@ class ApiClient:
     def __init__(
         self, base_url=EXAMPLE_BASE_URL, timeout=DEFAULT_TIMEOUT, auth=None
     ):
+        # [CORE] `auth` is [SECONDARY]: leave it out for an open API.
         # `self.name = value` stores the value on this one client object, so
         # every method can use it later as `self.name`.
         # Make sure the address ends in exactly one "/". Then a path can be
@@ -130,6 +161,7 @@ class ApiClient:
         self.timeout = timeout
         self.auth = auth
 
+    # [CORE] Level 1: joins the base address and a path.
     def build_url(self, path):
         """Return the full web address for a path on this API.
 
@@ -147,6 +179,10 @@ class ApiClient:
         # base address already ends in one.
         return self.base_url + path.lstrip("/")
 
+    # [CORE] Level 1: the heart of the file. The three calls that matter are
+    # `requests.get`, `raise_for_status` and `json`. Everything else in this
+    # method is level 2 ([ERRORS]) or level 4 ([SECONDARY]) and can be added
+    # after the simple version works. `params` is [SECONDARY].
     def get_json(self, path, params=None):
         """Send a GET request and return the reply as Python data.
 
@@ -170,6 +206,7 @@ class ApiClient:
             status (such as 404 or 500), or the reply is not valid JSON.
         """
         url = self.build_url(path)
+        # [SECONDARY] Logging. Useful, but the client works without it.
         # Log the address WITHOUT the query string or credentials: tokens
         # and keys are often sent as query values, and a log file is easy
         # to share by accident.
@@ -211,6 +248,8 @@ class ApiClient:
             logger.error(f"Reply from {url} was not valid JSON")
             raise ApiError("The API reply was not valid JSON.") from error
 
+    # [EXAMPLE] A pretend endpoint. Replace with your real ones; each real
+    # endpoint becomes one short method like this that calls `get_json`.
     def lookup(self, item_id):
         """Fetch one item by its ID. This is the example endpoint.
 
@@ -231,7 +270,8 @@ class ApiClient:
         ApiError
             When the request fails (see `get_json`).
         """
-        # Check the input first: cheap, local, and gives the clearest error.
+        # [SAFETY] Level 3. Check the input first: it is cheap, local, and
+        # gives the clearest error.
         item_id = validate_item_id(item_id)
         logger.info(f"Looking up {item_id}")
         # `quote(..., safe="")` encodes every character that has a special
