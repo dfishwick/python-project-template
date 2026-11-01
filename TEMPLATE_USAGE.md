@@ -60,5 +60,8 @@ All tests should pass with the new names.
 
 ## 6. Replace the example code
 
-`my_app/modules/example.py`, its tests, and the text in `docs/` and
-`README.md` are placeholders. Replace them with the real project.
+`my_app/modules/example.py`, `my_app/client.py` (the API example, with
+its address, endpoint and ID rule), their tests, and the text in `docs/`
+and `README.md` are placeholders. Replace them with the real project.
+If your project does not call a web API, delete `client.py`,
+`tests/test_client.py` and the `requests` line in `pyproject.toml`.
